@@ -4,7 +4,7 @@ from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 
 # ------------------- CONFIG -------------------
-BACKEND_URL = "http://127.0.0.1:8000"
+BACKEND_URL = "https://cipher-shield-v3-under-dev.onrender.com"
 # Example: http://127.0.0.1:8000 or deployed backend URL
 
 # ------------------- SESSION STATE -------------------
