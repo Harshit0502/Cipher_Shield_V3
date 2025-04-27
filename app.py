@@ -94,6 +94,13 @@ def decrypt_message(encrypted_hex, private_key_pem):
         )
     )
     return plaintext.decode()
+# ------------------- THREAT DETECTION FUNCTION -------------------
+def detect_threats():
+    url = f"{BACKEND_URL}/chat/detect_threats/"
+    headers = {"Authorization": f"Bearer {st.session_state.token}"}
+    response = requests.post(url, headers=headers)
+    return response
+
 
 # ------------------- STREAMLIT UI -------------------
 st.title("🔐 Cipher Shield - Secure Chat")
@@ -171,6 +178,18 @@ else:
                     st.error("⚠️ Decryption failed.")
     else:
         st.info("No chats yet, start sending messages!")
+    # 🔍 Threat Detection Button
+    if st.sidebar.button("🔍 Run Threat Detection"):
+        if st.session_state.token:
+            detection_response = detect_threats()
+            if detection_response.status_code == 200:
+                result = detection_response.json()
+                st.sidebar.success(f"Threat Detection Completed: {result['message']}")
+            else:
+                st.sidebar.error(f"Error: {detection_response.text}")
+        else:
+            st.sidebar.error("You must be logged in to detect threats!")
+
 
     if st.button("Logout"):
         st.session_state.token = None
