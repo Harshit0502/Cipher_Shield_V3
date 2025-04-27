@@ -113,11 +113,14 @@ else:
     message_text = st.sidebar.text_input("Your Message")
     if st.sidebar.button("Send Message"):
         if receiver_username and message_text:
-            send_response = send_message(receiver_username, message_text)
-            if send_response.status_code == 201:
-                st.sidebar.success("Message Sent!")
-            else:
-                st.sidebar.error("Failed to send message.")
+            try:
+                send_response = send_message(receiver_username, message_text)
+                if send_response.status_code == 201:
+                    st.sidebar.success("Message Sent!")
+                else:
+                    st.sidebar.error(f"Failed to send message: {send_response.text}")
+            except Exception as e:
+                st.sidebar.error(f"Exception occurred: {str(e)}")
 
     st.subheader("💬 Live Chat with Another Soldier")
 
@@ -126,21 +129,22 @@ else:
 
     target_user = st.text_input("Chatting with (username)")
     if target_user:
-        chats = get_chat_history(target_user)
+        with st.spinner("Fetching chat history..."):
+            chats = get_chat_history(target_user)
         if chats:
             for chat in chats:
                 sender = chat['sender']
                 encrypted_text = chat['encrypted_text']
                 timestamp = chat.get('timestamp', 'Unknown Time')
 
-                if sender == st.session_state.username:
-                    st.success(f"🧑‍💻 You ({timestamp}):\n{encrypted_text}")
-                else:
-                    try:
-                        decrypted_text = decrypt_message(encrypted_text, st.session_state.private_key)
+                try:
+                    decrypted_text = decrypt_message(encrypted_text, st.session_state.private_key)
+                    if sender == st.session_state.username:
+                        st.success(f"🧑‍💻 You ({timestamp}):\n{decrypted_text}")
+                    else:
                         st.info(f"👥 {sender} ({timestamp}):\n{decrypted_text}")
-                    except Exception:
-                        st.error("⚠️ Decryption failed.")
+                except Exception:
+                    st.error("⚠️ Decryption failed.")
         else:
             st.info("No chats yet, start sending messages!")
 
