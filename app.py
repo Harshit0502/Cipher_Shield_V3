@@ -3,6 +3,7 @@ import requests
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from streamlit_autorefresh import st_autorefresh
+import time
 
 # ------------------- CONFIG -------------------
 BACKEND_URL = "https://cipher-shield-v3-under-dev.onrender.com"
@@ -10,6 +11,8 @@ BACKEND_URL = "https://cipher-shield-v3-under-dev.onrender.com"
 # ------------------- SESSION STATE -------------------
 if 'token' not in st.session_state:
     st.session_state.token = None
+if 'refresh' not in st.session_state:
+    st.session_state.refresh = None
 if 'private_key' not in st.session_state:
     st.session_state.private_key = None
 if 'username' not in st.session_state:
@@ -26,8 +29,21 @@ def login(username, password):
     data = {'username': username, 'password': password}
     response = requests.post(url, json=data)
     if response.status_code == 200:
-        return response.json()
+        tokens = response.json()
+        st.session_state.token = tokens['access']
+        st.session_state.refresh = tokens['refresh']
+        return tokens
     return None
+
+def refresh_token():
+    url = f"{BACKEND_URL}/auth/token/refresh/"
+    data = {'refresh': st.session_state.refresh}
+    response = requests.post(url, json=data)
+    if response.status_code == 200:
+        new_access = response.json().get('access')
+        st.session_state.token = new_access
+        return True
+    return False
 
 def fetch_private_key():
     url = f"{BACKEND_URL}/auth/private_key/"
@@ -42,12 +58,23 @@ def send_message(receiver, plain_text):
     url = f"{BACKEND_URL}/chat/send/"
     headers = {"Authorization": f"Bearer {st.session_state.token}"}
     data = {'receiver': receiver, 'plain_text': plain_text}
-    return requests.post(url, headers=headers, json=data)
+    response = requests.post(url, headers=headers, json=data)
+
+    if response.status_code == 401 and 'token_not_valid' in response.text:
+        # Token expired or invalid — try refreshing
+        if refresh_token():
+            headers = {"Authorization": f"Bearer {st.session_state.token}"}
+            response = requests.post(url, headers=headers, json=data)
+    return response
 
 def get_chat_history(other_user):
     url = f"{BACKEND_URL}/chat/history/?with={other_user}"
     headers = {"Authorization": f"Bearer {st.session_state.token}"}
     response = requests.get(url, headers=headers)
+    if response.status_code == 401 and 'token_not_valid' in response.text:
+        if refresh_token():
+            headers = {"Authorization": f"Bearer {st.session_state.token}"}
+            response = requests.get(url, headers=headers)
     if response.status_code == 200:
         return response.json()
     return []
@@ -83,7 +110,6 @@ if not st.session_state.token:
             auth_data = login(username, password)
             if auth_data:
                 st.success("Login successful!")
-                st.session_state.token = auth_data['access']
                 st.session_state.username = username
                 private_key_data = fetch_private_key()
                 if private_key_data:
@@ -150,6 +176,7 @@ else:
 
     if st.button("Logout"):
         st.session_state.token = None
+        st.session_state.refresh = None
         st.session_state.private_key = None
         st.session_state.username = None
         st.success("Logged out successfully!")
