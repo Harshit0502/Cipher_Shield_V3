@@ -150,19 +150,17 @@ else:
 
     st.subheader("💬 Live Chat with Another Soldier")
 
-    # 🕒 Auto refresh every 5 seconds
+    # Auto refresh every 5 seconds
     count = st_autorefresh(interval=5000, limit=None, key="chat_refresh")
-
     target_user = st.text_input("Chatting with (username)")
+
     if target_user:
-        with st.spinner("Fetching chat history..."):
-            chats = get_chat_history(target_user)
+        chats = get_chat_history(target_user)
         if chats:
             for chat in chats:
                 sender = chat['sender']
                 encrypted_text = chat['encrypted_text']
                 timestamp = chat.get('timestamp', 'Unknown Time')
-
                 try:
                     decrypted_text = decrypt_message(encrypted_text, st.session_state.private_key)
                     if sender == st.session_state.username:
@@ -171,8 +169,8 @@ else:
                         st.info(f"👥 {sender} ({timestamp}):\n{decrypted_text}")
                 except Exception:
                     st.error("⚠️ Decryption failed.")
-        else:
-            st.info("No chats yet, start sending messages!")
+    else:
+        st.info("No chats yet, start sending messages!")
 
     if st.button("Logout"):
         st.session_state.token = None
